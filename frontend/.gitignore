@@ -1,0 +1,34 @@
+# Frontend specific
+node_modules/
+build/
+dist/
+
+# Logs
+*.log
+
+# Env
+.env
+.env.local
+
+# Cache
+.cache/
+coverage/
+
+# Large media / archives
+*.zip
+*.tar.gz
+*.tgz
+*.7z
+*.mp4
+*.mov
+*.mkv
+*.iso
+*.exe
+*.dll
+*.psd
+*.ai
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
