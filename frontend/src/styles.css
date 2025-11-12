@@ -20,10 +20,10 @@
 }
 
 body {
-    display: flex;
     background-color: #f5f7fa;
     color: #333;
     overflow-x: hidden;
+    min-height: 100vh;
 }
 
 html {
@@ -31,8 +31,18 @@ html {
     font-size: 16px;
 }
 
+/* Asegurar que la app ocupe todo el alto de la pantalla */
+html, body, #root {
+    height: 100%;
+    width: 100%;
+}
+
 .app-container {
     width: 100%;
+    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -41,10 +51,16 @@ html {
     height: 100vh;
     background: var(--primary);
     color: white;
-    position: fixed;
+    position: sticky;
+    top: 0;
     transition: all 0.3s ease;
     z-index: 1000;
     box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Estado colapsado del sidebar */
+.sidebar.collapsed {
+    width: 70px;
 }
 
 .logo-container {
@@ -99,11 +115,16 @@ html {
 /* Main Content */
 .main-content {
     flex: 1;
-    margin-left: var(--sidebar-width);
-    /* asegurar que el contenido no desborde horizontalmente */
-    width: calc(100% - var(--sidebar-width));
     transition: all 0.3s ease;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    min-width: 0;
 }
+
+/* Ajuste del main-content cuando el sidebar está colapsado */
+/* Con layout flex, el ancho del sidebar colapsado reduce el espacio y el main se ajusta automáticamente */
 
 /* Header */
 .header {
@@ -197,13 +218,14 @@ html {
 
 /* Content Area */
 .content {
-    padding: 30px;
+    padding: 0;
+    flex: 1;
 }
 
 .content .container {
-    /* Centrar y controlar el ancho máximo para que los elementos se ajusten */
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
 }
 
 .page-title {
@@ -303,6 +325,127 @@ html {
 
 .negative {
     color: var(--danger);
+}
+
+/* Form Styles */
+.form-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.form-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-title i {
+    color: var(--secondary);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--dark);
+    font-size: 14px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.btn i {
+    font-size: 12px;
+}
+
+.btn-primary {
+    background-color: var(--secondary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+    background-color: #f1f1f1;
+    color: var(--dark);
+}
+
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 /* Tables */
@@ -467,8 +610,7 @@ tr:hover {
     }
 
     .main-content {
-        margin-left: 70px;
-        width: calc(100% - 70px);
+        padding-left: 70px;
     }
 
     .charts-container {

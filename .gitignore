@@ -1,0 +1,78 @@
+# Node
+node_modules/
+
+# Build outputs
+/build/
+/dist/
+
+# Frontend
+/frontend/node_modules/
+/frontend/build/
+/frontend/dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Coverage and caches
+coverage/
+.cache/
+
+# Large media / archives / binaries (ignored to avoid committing big files)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.iso
+*.img
+*.exe
+*.dll
+*.bin
+
+# Video / audio
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.mp3
+*.wav
+
+# Images / design files often large
+*.psd
+*.ai
+*.sketch
+
+# Databases / local storage
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# npm package lock - keep if you want consistent installs, otherwise uncomment
+# package-lock.json

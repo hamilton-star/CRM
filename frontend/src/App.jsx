@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './styles.css';
-import { initializeApp } from '././app.js';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Destinos from './components/Destinos/Destinos';
+import Proveedores from './components/Proveedores/Proveedores';
+import PaquetesTuristicos from './components/PaquetesTuristicos/PaquetesTuristicos';
+import Clientes from './components/Clientes/clientes';
+import Reservas from './components/reservas/Reservas';
+import Comunicaciones from './components/Comunicaciones/Comunicaciones';
 
 const App = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
     const [searchValue, setSearchValue] = useState('');
 
-    useEffect(() => {
-        // Inicializar la aplicación cuando el componente se monta
-        initializeApp();
-    }, []);
+    
 
     const toggleSidebar = () => {
         setSidebarCollapsed(!sidebarCollapsed);
@@ -64,18 +67,33 @@ const App = () => {
     ];
 
     const menuItems = [
-        { id: 'dashboard', icon: 'fas fa-tachometer-alt', label: 'Dashboard' },
-        { id: 'destinations', icon: 'fas fa-map-marked-alt', label: 'Destinos' },
-        { id: 'providers', icon: 'fas fa-handshake', label: 'Proveedores' },
-        { id: 'users', icon: 'fas fa-users', label: 'Usuarios' },
-        { id: 'packages', icon: 'fas fa-suitcase-rolling', label: 'Paquetes Turísticos' },
-        { id: 'clients', icon: 'fas fa-user-friends', label: 'Clientes' },
-        { id: 'reservations', icon: 'fas fa-calendar-check', label: 'Reservas' },
-        { id: 'payments', icon: 'fas fa-credit-card', label: 'Pagos' },
-        { id: 'communication', icon: 'fas fa-comments', label: 'Comunicación' },
-        { id: 'settings', icon: 'fas fa-cog', label: 'Configuración' }
+        { id: 'dashboard', icon: 'fas fa-tachometer-alt', label: 'Dashboard', path: '/' },
+        { id: 'destinations', icon: 'fas fa-map-marked-alt', label: 'Destinos', path: '/destinos' },
+        { id: 'providers', icon: 'fas fa-handshake', label: 'Proveedores', path: '/proveedores' },
+        { id: 'packages', icon: 'fas fa-suitcase-rolling', label: 'Paquetes Turísticos', path: '/PaquetesTuristicos' },
+        { id: 'clients', icon: 'fas fa-user-friends', label: 'Clientes', path: '/clientes' },
+        { id: 'reservations', icon: 'fas fa-calendar-check', label: 'Reservas', path: '/reservas' },
+        { id: 'payments', icon: 'fas fa-credit-card', label: 'Pagos', path: '/pagos' },
+        { id: 'communication', icon: 'fas fa-comments', label: 'Comunicación', path: '/comunicacion' },
+        { id: 'settings', icon: 'fas fa-cog', label: 'Configuración', path: '/configuracion' }
     ];
 
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<Dashboard menuItems={menuItems} sidebarCollapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} activeMenuItem={activeMenuItem} handleMenuItemClick={handleMenuItemClick} searchValue={searchValue} setSearchValue={setSearchValue} reservations={reservations} />} />
+                <Route path="/destinos" element={<Destinos />} />
+                <Route path="/proveedores" element={<Proveedores />} />
+                <Route path="/PaquetesTuristicos" element={<PaquetesTuristicos />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/reservas" element={<Reservas />} />
+                <Route path="/comunicacion" element={<Comunicaciones />} />
+            </Routes>
+        </Router>
+    );
+};
+
+function Dashboard({ menuItems, sidebarCollapsed, toggleSidebar, activeMenuItem, handleMenuItemClick, searchValue, setSearchValue, reservations }) {
     return (
         <div className="app-container">
             {/* Sidebar */}
@@ -88,14 +106,16 @@ const App = () => {
                 </div>
                 <div className="sidebar-menu">
                     {menuItems.map(item => (
-                        <div
+                        <Link 
                             key={item.id}
+                            to={item.path}
                             className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
                             onClick={() => handleMenuItemClick(item.id)}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
                         >
                             <i className={item.icon}></i>
                             <span className="menu-text">{item.label}</span>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </div>
@@ -177,19 +197,21 @@ const App = () => {
                                 18% más que el mes anterior
                             </div>
                         </div>
-                        <div className="card">
-                            <div className="card-header">
-                                <div className="card-title">Destinos Activos</div>
-                                <div className="card-icon destinos">
-                                    <i className="fas fa-map-marked-alt"></i>
+                        <Link to="/destinos" style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <div className="card" style={{ cursor: 'pointer' }}>
+                                <div className="card-header">
+                                    <div className="card-title">Destinos Activos</div>
+                                    <div className="card-icon destinos">
+                                        <i className="fas fa-map-marked-alt"></i>
+                                    </div>
+                                </div>
+                                <div className="card-value">24</div>
+                                <div className="card-footer">
+                                    <i className="fas fa-minus"></i>
+                                    Sin cambios
                                 </div>
                             </div>
-                            <div className="card-value">24</div>
-                            <div className="card-footer">
-                                <i className="fas fa-minus"></i>
-                                Sin cambios
-                            </div>
-                        </div>
+                        </Link>
                     </div>
 
                     {/* Charts */}
