@@ -3,68 +3,15 @@ import { Link } from 'react-router-dom';
 import Layout from '../Layout';
 
 const Reservas = () => {
-    // Datos de ejemplo
-    const [reservas, setReservas] = useState([
-        {
-            reserva_id: 1,
-            cliente_id: 1,
-            paquete_id: 2,
-            usuario_id: 1,
-            fecha_reserva: "2023-10-15",
-            fecha_salida: "2023-12-20",
-            fecha_retorno: "2023-12-24",
-            estado: "confirmada",
-            precio_total: 2200.00,
-            notas: "Cliente solicita habitación con vista a la Torre Eiffel"
-        },
-        {
-            reserva_id: 2,
-            cliente_id: 2,
-            paquete_id: 1,
-            usuario_id: 2,
-            fecha_reserva: "2023-10-18",
-            fecha_salida: "2024-01-15",
-            fecha_retorno: "2024-01-20",
-            estado: "pendiente",
-            precio_total: 1250.00,
-            notas: "Es alérgico a mariscos, considerar en las comidas"
-        },
-        {
-            reserva_id: 3,
-            cliente_id: 3,
-            paquete_id: 3,
-            usuario_id: 1,
-            fecha_reserva: "2023-09-20",
-            fecha_salida: "2023-11-10",
-            fecha_retorno: "2023-11-16",
-            estado: "completada",
-            precio_total: 1800.00,
-            notas: "Viaje realizado satisfactoriamente"
-        }
-    ]);
+    const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) || 'http://localhost:5000';
+    const [reservas, setReservas] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    // Mapeo de datos
-    const clientes = {
-        1: "María González",
-        2: "Carlos Rodríguez", 
-        3: "Ana Martínez",
-        4: "Juan Pérez",
-        5: "Laura Sánchez"
-    };
-
-    const paquetes = {
-        1: "Aventura en la Selva Amazónica",
-        2: "Romance en París",
-        3: "Cultural en Machu Picchu",
-        4: "Playa en Cancún",
-        5: "Aventura en Tokio"
-    };
-
-    const usuarios = {
-        1: "Roberto Jiménez",
-        2: "Sofia Hernández",
-        3: "Miguel Ángel Torres"
-    };
+    // Listas reales
+    const [clientesList, setClientesList] = useState([]);
+    const [paquetesList, setPaquetesList] = useState([]);
+    const [usuariosList, setUsuariosList] = useState([]);
 
     // Estados del formulario
     const [formData, setFormData] = useState({
@@ -92,46 +39,67 @@ const Reservas = () => {
     };
 
     // Manejar envío del formulario
-    const handleSubmit = (e) => {
+    useEffect(() => { cargarTodo(); }, []);
+
+    async function cargarTodo() {
+        setLoading(true);
+        setError('');
+        try {
+            const [resReservas, resClientes, resPaquetes, resUsuarios] = await Promise.all([
+                fetch(`${API_BASE}/api/reservas`),
+                fetch(`${API_BASE}/api/clientes`),
+                fetch(`${API_BASE}/api/paquetes`),
+                fetch(`${API_BASE}/api/usuarios`),
+            ]);
+            const [jsonReservas, jsonClientes, jsonPaquetes, jsonUsuarios] = await Promise.all([
+                resReservas.json(), resClientes.json(), resPaquetes.json(), resUsuarios.json()
+            ]);
+            if (!resReservas.ok || !jsonReservas.success) throw new Error(jsonReservas.message || 'Error al cargar reservas');
+            if (!resClientes.ok || !jsonClientes.success) throw new Error(jsonClientes.message || 'Error al cargar clientes');
+            if (!resPaquetes.ok || !jsonPaquetes.success) throw new Error(jsonPaquetes.message || 'Error al cargar paquetes');
+            if (!resUsuarios.ok || !jsonUsuarios.success) throw new Error(jsonUsuarios.message || 'Error al cargar usuarios');
+            setReservas(jsonReservas.data || []);
+            setClientesList(jsonClientes.data || []);
+            setPaquetesList(jsonPaquetes.data || []);
+            setUsuariosList(jsonUsuarios.data || []);
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    }
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        const reservaData = {
-            ...formData,
+        const payload = {
             cliente_id: parseInt(formData.cliente_id),
             paquete_id: parseInt(formData.paquete_id),
             usuario_id: parseInt(formData.usuario_id),
-            precio_total: parseFloat(formData.precio_total)
+            fecha_reserva: formData.fecha_reserva,
+            fecha_salida: formData.fecha_salida,
+            fecha_retorno: formData.fecha_retorno,
+            estado: formData.estado,
+            precio_total: parseFloat(formData.precio_total),
+            notas: formData.notas
         };
-
-        if (editandoId) {
-            // Actualizar reserva existente
-            setReservas(reservas.map(reserva => 
-                reserva.reserva_id === editandoId 
-                    ? { ...reserva, ...reservaData } 
-                    : reserva
-            ));
-            setEditandoId(null);
-        } else {
-            // Agregar nueva reserva
-            const nuevaReserva = {
-                ...reservaData,
-                reserva_id: reservas.length > 0 ? Math.max(...reservas.map(r => r.reserva_id)) + 1 : 1
-            };
-            setReservas([...reservas, nuevaReserva]);
-        }
-
-        // Limpiar formulario
-        setFormData({
-            cliente_id: '',
-            paquete_id: '',
-            usuario_id: '',
-            fecha_reserva: new Date().toISOString().split('T')[0],
-            fecha_salida: '',
-            fecha_retorno: '',
-            estado: '',
-            precio_total: '',
-            notas: ''
-        });
+        try {
+            setError('');
+            if (editandoId) {
+                const res = await fetch(`${API_BASE}/api/reservas/${editandoId}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al actualizar reserva');
+                setEditandoId(null);
+            } else {
+                const res = await fetch(`${API_BASE}/api/reservas`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear reserva');
+            }
+            await cargarTodo();
+            setFormData({
+                cliente_id: '', paquete_id: '', usuario_id: '', fecha_reserva: new Date().toISOString().split('T')[0], fecha_salida: '', fecha_retorno: '', estado: '', precio_total: '', notas: ''
+            });
+        } catch (e) { setError(e.message); }
     };
 
     // Editar reserva
@@ -154,10 +122,15 @@ const Reservas = () => {
     };
 
     // Eliminar reserva
-    const eliminarReserva = (id) => {
-        if (window.confirm('¿Está seguro de que desea eliminar esta reserva?')) {
-            setReservas(reservas.filter(r => r.reserva_id !== id));
-        }
+    const eliminarReserva = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar esta reserva?')) return;
+        try {
+            setError('');
+            const res = await fetch(`${API_BASE}/api/reservas/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar reserva');
+            await cargarTodo();
+        } catch (e) { setError(e.message); }
     };
 
     // Cancelar edición
@@ -205,6 +178,8 @@ const Reservas = () => {
                     <i className="fas fa-calendar-check"></i>
                     Gestión de Reservas
                 </h1>
+                {error && (<div className="alert error">{error}</div>)}
+                {loading && (<div className="loading">Cargando...</div>)}
 
                 {/* Formulario de Reservas */}
                 <div className="form-container">
@@ -219,13 +194,15 @@ const Reservas = () => {
                                 <select 
                                     id="cliente_id" 
                                     name="cliente_id" 
-                                    value={formData.cliente_id}
+                                    value={formData.cliente_id} 
                                     onChange={handleInputChange}
                                     required
                                 >
                                     <option value="">Seleccione un cliente</option>
-                                    {Object.entries(clientes).map(([id, nombre]) => (
-                                        <option key={id} value={id}>{nombre}</option>
+                                    {clientesList.map(c => (
+                                        <option key={c.cliente_id} value={c.cliente_id}>
+                                            {`${c.nombre} ${c.apellido}`}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -234,13 +211,15 @@ const Reservas = () => {
                                 <select 
                                     id="paquete_id" 
                                     name="paquete_id" 
-                                    value={formData.paquete_id}
+                                    value={formData.paquete_id} 
                                     onChange={handleInputChange}
                                     required
                                 >
                                     <option value="">Seleccione un paquete</option>
-                                    {Object.entries(paquetes).map(([id, nombre]) => (
-                                        <option key={id} value={id}>{nombre}</option>
+                                    {paquetesList.map(p => (
+                                        <option key={p.paquete_id} value={p.paquete_id}>
+                                            {p.nombre_paquete}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -249,13 +228,15 @@ const Reservas = () => {
                                 <select 
                                     id="usuario_id" 
                                     name="usuario_id" 
-                                    value={formData.usuario_id}
+                                    value={formData.usuario_id} 
                                     onChange={handleInputChange}
                                     required
                                 >
                                     <option value="">Seleccione un agente</option>
-                                    {Object.entries(usuarios).map(([id, nombre]) => (
-                                        <option key={id} value={id}>{nombre}</option>
+                                    {usuariosList.map(u => (
+                                        <option key={u.usuario_id} value={u.usuario_id}>
+                                            {u.nombre}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -382,8 +363,8 @@ const Reservas = () => {
                                     <td>#{reserva.reserva_id.toString().padStart(3, '0')}</td>
                                     <td>
                                         <div className="reserva-info">
-                                            <span className="reserva-cliente">{clientes[reserva.cliente_id]}</span>
-                                            <span className="reserva-paquete">{paquetes[reserva.paquete_id]}</span>
+                                            <span className="reserva-cliente">{reserva.cliente_nombre || (clientesList.find(c => c.cliente_id === reserva.cliente_id)?.nombre + ' ' + (clientesList.find(c => c.cliente_id === reserva.cliente_id)?.apellido || ''))}</span>
+                                            <span className="reserva-paquete">{reserva.nombre_paquete || (paquetesList.find(p => p.paquete_id === reserva.paquete_id)?.nombre_paquete)}</span>
                                         </div>
                                     </td>
                                     <td>
@@ -393,8 +374,8 @@ const Reservas = () => {
                                             <span className="reserva-fechas">Duración: {calcularDuracion(reserva.fecha_salida, reserva.fecha_retorno)}</span>
                                         </div>
                                     </td>
-                                    <td>{usuarios[reserva.usuario_id]}</td>
-                                    <td className="price">${reserva.precio_total.toFixed(2)}</td>
+                                    <td>{reserva.usuario_nombre || (usuariosList.find(u => u.usuario_id === reserva.usuario_id)?.nombre)}</td>
+                                    <td className="price">${Number(reserva.precio_total || 0).toFixed(2)}</td>
                                     <td>
                                         <span className={`status ${reserva.estado}`}>
                                             {reserva.estado.charAt(0).toUpperCase() + reserva.estado.slice(1)}

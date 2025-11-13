@@ -3,49 +3,11 @@ import { Link } from 'react-router-dom';
 import Layout from '../Layout';
 
 const PaquetesTuristicos = () => {
-    // Datos de ejemplo
-    const [paquetes, setPaquetes] = useState([
-        {
-            paquete_id: 1,
-            nombre_paquete: "Aventura en la Selva Amazónica",
-            descripcion: "Explora la selva amazónica con guías expertos, incluye alojamiento en eco-lodge, comidas y todas las actividades.",
-            destino_id: 2,
-            duracion_dias: 5,
-            precio_base: 1250.00,
-            tipo_paquete: "aventura",
-            activo: true
-        },
-        {
-            paquete_id: 2,
-            nombre_paquete: "Romance en París",
-            descripcion: "Paquete todo incluido para parejas: hotel 5 estrellas, cena en Torre Eiffel, crucero por el Sena y tours privados.",
-            destino_id: 1,
-            duracion_dias: 4,
-            precio_base: 2200.00,
-            tipo_paquete: "romantico",
-            activo: true
-        },
-        {
-            paquete_id: 3,
-            nombre_paquete: "Cultural en Machu Picchu",
-            descripcion: "Descubre la cultura inca con visitas a Machu Picchu, Valle Sagrado y ciudad de Cuzco. Incluye guías especializados.",
-            destino_id: 2,
-            duracion_dias: 6,
-            precio_base: 1800.00,
-            tipo_paquete: "cultural",
-            activo: false
-        }
-    ]);
-
-    // Mapeo de destinos
-    const destinos = {
-        1: "París, Francia",
-        2: "Machu Picchu, Perú",
-        3: "Cancún, México",
-        4: "Tokio, Japón",
-        5: "Roma, Italia",
-        6: "New York, USA"
-    };
+    const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) || 'http://localhost:5000';
+    const [paquetes, setPaquetes] = useState([]);
+    const [destinos, setDestinos] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     // Estados del formulario
     const [formData, setFormData] = useState({
@@ -85,40 +47,56 @@ const PaquetesTuristicos = () => {
         });
     };
 
+    useEffect(() => { cargarDatos(); }, []);
+
+    async function cargarDatos() {
+        setLoading(true);
+        setError('');
+        try {
+            const [resPaquetes, resDestinos] = await Promise.all([
+                fetch(`${API_BASE}/api/paquetes`),
+                fetch(`${API_BASE}/api/destinos`)
+            ]);
+            const [jsonPaquetes, jsonDestinos] = await Promise.all([resPaquetes.json(), resDestinos.json()]);
+            if (!resPaquetes.ok || !jsonPaquetes.success) throw new Error(jsonPaquetes.message || 'Error al cargar paquetes');
+            if (!resDestinos.ok || !jsonDestinos.success) throw new Error(jsonDestinos.message || 'Error al cargar destinos');
+            setPaquetes(jsonPaquetes.data || []);
+            setDestinos(jsonDestinos.data || []);
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    }
+
     // Manejar envío del formulario
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        const nuevoPaquete = {
-            ...formData,
+        const payload = {
+            nombre_paquete: formData.nombre_paquete,
+            descripcion: formData.descripcion,
             destino_id: parseInt(formData.destino_id),
             duracion_dias: parseInt(formData.duracion_dias),
             precio_base: parseFloat(formData.precio_base),
+            tipo_paquete: formData.tipo_paquete,
             activo: formData.activo === 'true'
         };
-
-        if (editandoId) {
-            // Actualizar paquete existente
-            setPaquetes(paquetes.map(p => 
-                p.paquete_id === editandoId ? { ...nuevoPaquete, paquete_id: editandoId } : p
-            ));
-            setEditandoId(null);
-        } else {
-            // Agregar nuevo paquete
-            const nuevoId = paquetes.length > 0 ? Math.max(...paquetes.map(p => p.paquete_id)) + 1 : 1;
-            setPaquetes([...paquetes, { ...nuevoPaquete, paquete_id: nuevoId }]);
-        }
-
-        // Limpiar formulario
-        setFormData({
-            nombre_paquete: '',
-            descripcion: '',
-            destino_id: '',
-            duracion_dias: '',
-            precio_base: '',
-            tipo_paquete: '',
-            activo: 'true'
-        });
+        try {
+            setError('');
+            if (editandoId) {
+                const res = await fetch(`${API_BASE}/api/paquetes/${editandoId}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al actualizar paquete');
+                setEditandoId(null);
+            } else {
+                const res = await fetch(`${API_BASE}/api/paquetes`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear paquete');
+            }
+            await cargarDatos();
+            setFormData({ nombre_paquete: '', descripcion: '', destino_id: '', duracion_dias: '', precio_base: '', tipo_paquete: '', activo: 'true' });
+        } catch (e) { setError(e.message); }
     };
 
     // Editar paquete
@@ -139,10 +117,15 @@ const PaquetesTuristicos = () => {
     };
 
     // Eliminar paquete
-    const eliminarPaquete = (id) => {
-        if (window.confirm('¿Está seguro de que desea eliminar este paquete turístico?')) {
-            setPaquetes(paquetes.filter(p => p.paquete_id !== id));
-        }
+    const eliminarPaquete = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar este paquete turístico?')) return;
+        try {
+            setError('');
+            const res = await fetch(`${API_BASE}/api/paquetes/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar paquete');
+            await cargarDatos();
+        } catch (e) { setError(e.message); }
     };
 
     // Cancelar edición
@@ -171,6 +154,8 @@ const PaquetesTuristicos = () => {
                     <i className="fas fa-suitcase-rolling"></i>
                     Gestión de Paquetes Turísticos
                 </h1>
+                {error && (<div className="alert error">{error}</div>)}
+                {loading && (<div className="loading">Cargando...</div>)}
 
                 {/* Formulario de Paquetes Turísticos */}
                 <div className="form-container">
@@ -202,8 +187,10 @@ const PaquetesTuristicos = () => {
                                     required
                                 >
                                     <option value="">Seleccione un destino</option>
-                                    {Object.entries(destinos).map(([id, nombre]) => (
-                                        <option key={id} value={id}>{nombre}</option>
+                                    {destinos.map(d => (
+                                        <option key={d.destino_id} value={d.destino_id}>
+                                            {(d.ciudad ? d.ciudad + ', ' : '') + (d.pais || '')}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -337,10 +324,10 @@ const PaquetesTuristicos = () => {
                                             {paquete.descripcion.substring(0, 60)}...
                                         </div>
                                     </td>
-                                    <td>{destinos[paquete.destino_id] || 'Desconocido'}</td>
+                                    <td>{paquete.destino_nombre || 'Desconocido'}</td>
                                     <td>{paquete.duracion_dias} días</td>
                                     <td><span className="package-type">{traducirTipoPaquete(paquete.tipo_paquete)}</span></td>
-                                    <td className="price">${paquete.precio_base.toFixed(2)}</td>
+                                    <td className="price">${Number(paquete.precio_base || 0).toFixed(2)}</td>
                                     <td>
                                         <span className={`status ${paquete.activo ? 'active' : 'inactive'}`}>
                                             {paquete.activo ? 'Activo' : 'Inactivo'}

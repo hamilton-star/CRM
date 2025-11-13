@@ -3,41 +3,10 @@ import { Link } from 'react-router-dom';
 import Layout from '../Layout';
 
 const Comunicaciones = () => {
-    // Datos de ejemplo
-    const [comunicaciones, setComunicaciones] = useState([
-        {
-            interaccion_id: 1,
-            cliente_id: 1,
-            usuario_id: 1,
-            tipo_interaccion: "llamada",
-            fecha_hora: "2023-10-15T14:30:00",
-            descripcion: "Cliente consultó sobre disponibilidad de paquete a París para diciembre. Se envió información detallada por email."
-        },
-        {
-            interaccion_id: 2,
-            cliente_id: 2,
-            usuario_id: 2,
-            tipo_interaccion: "email",
-            fecha_hora: "2023-10-16T10:15:00",
-            descripcion: "Envío de cotización para paquete de aventura en la selva. Cliente mostró interés en fechas de enero."
-        },
-        {
-            interaccion_id: 3,
-            cliente_id: 3,
-            usuario_id: 1,
-            tipo_interaccion: "whatsapp",
-            fecha_hora: "2023-10-17T16:45:00",
-            descripcion: "Coordinación de detalles finales para viaje a Machu Picchu. Confirmación de horarios de vuelo y traslados."
-        },
-        {
-            interaccion_id: 4,
-            cliente_id: 1,
-            usuario_id: 3,
-            tipo_interaccion: "presencial",
-            fecha_hora: "2023-10-18T11:00:00",
-            descripcion: "Reunión en oficina para firmar contratos y realizar pago inicial. Cliente muy satisfecho con la atención."
-        }
-    ]);
+    const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) || 'http://localhost:5000';
+    const [comunicaciones, setComunicaciones] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     // Mapeo de datos
     const clientes = {
@@ -71,15 +40,25 @@ const Comunicaciones = () => {
     const [editandoId, setEditandoId] = useState(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    // Establecer fecha y hora actual por defecto al cargar el componente
+    // Cargar comunicaciones y setear fecha por defecto
     useEffect(() => {
         const ahora = new Date();
         ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
-        setFormData(prev => ({
-            ...prev,
-            fecha_hora: ahora.toISOString().slice(0, 16)
-        }));
+        setFormData(prev => ({ ...prev, fecha_hora: ahora.toISOString().slice(0, 16) }));
+        cargarComunicaciones();
     }, []);
+
+    async function cargarComunicaciones() {
+        setLoading(true);
+        setError('');
+        try {
+            const res = await fetch(`${API_BASE}/api/comunicaciones`);
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Error al cargar comunicaciones');
+            setComunicaciones(json.data || []);
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    }
 
     // Función para manejar cambios en los inputs del formulario
     const handleInputChange = (e) => {
@@ -91,38 +70,34 @@ const Comunicaciones = () => {
     };
 
     // Función para manejar el envío del formulario
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (editandoId) {
-            // Actualizar comunicación existente
-            setComunicaciones(comunicaciones.map(com => 
-                com.interaccion_id === editandoId 
-                    ? { ...formData, interaccion_id: editandoId } 
-                    : com
-            ));
-            setEditandoId(null);
-            alert('Interacción actualizada correctamente');
-        } else {
-            // Agregar nueva comunicación
-            const nuevoId = comunicaciones.length > 0 
-                ? Math.max(...comunicaciones.map(c => c.interaccion_id)) + 1 
-                : 1;
-            
-            setComunicaciones([
-                ...comunicaciones,
-                {
-                    ...formData,
-                    interaccion_id: nuevoId,
-                    cliente_id: parseInt(formData.cliente_id),
-                    usuario_id: parseInt(formData.usuario_id)
-                }
-            ]);
-            alert('Interacción registrada correctamente');
-        }
-        
-        // Limpiar formulario
-        resetForm();
+        const payload = {
+            cliente_id: parseInt(formData.cliente_id),
+            usuario_id: parseInt(formData.usuario_id),
+            tipo_interaccion: formData.tipo_interaccion,
+            fecha_hora: formData.fecha_hora,
+            descripcion: formData.descripcion
+        };
+        try {
+            setError('');
+            if (editandoId) {
+                const res = await fetch(`${API_BASE}/api/comunicaciones/${editandoId}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al actualizar interacción');
+                setEditandoId(null);
+            } else {
+                const res = await fetch(`${API_BASE}/api/comunicaciones`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear interacción');
+            }
+            await cargarComunicaciones();
+            resetForm();
+        } catch (e) { setError(e.message); }
     };
 
     // Función para resetear el formulario
@@ -173,11 +148,15 @@ const Comunicaciones = () => {
     };
 
     // Función para eliminar una comunicación
-    const eliminarComunicacion = (id) => {
-        if (window.confirm('¿Está seguro de que desea eliminar esta interacción?')) {
-            setComunicaciones(comunicaciones.filter(c => c.interaccion_id !== id));
-            alert('Interacción eliminada correctamente');
-        }
+    const eliminarComunicacion = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar esta interacción?')) return;
+        try {
+            setError('');
+            const res = await fetch(`${API_BASE}/api/comunicaciones/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar interacción');
+            await cargarComunicaciones();
+        } catch (e) { setError(e.message); }
     };
 
     // Función para exportar datos
@@ -193,6 +172,8 @@ const Comunicaciones = () => {
                     <i className="fas fa-comments"></i>
                     Gestión de Comunicaciones
                 </h1>
+                {error && (<div className="alert error">{error}</div>)}
+                {loading && (<div className="loading">Cargando...</div>)}
 
                 {/* Formulario de Comunicaciones */}
                 <div className="form-container">
@@ -321,9 +302,7 @@ const Comunicaciones = () => {
                                         <td>#{comunicacion.interaccion_id.toString().padStart(3, '0')}</td>
                                         <td>
                                             <div className="interaction-info">
-                                                <span className="interaction-client">
-                                                    {clientes[comunicacion.cliente_id] || 'Cliente desconocido'}
-                                                </span>
+                                                <span className="interaction-client">{comunicacion.cliente_nombre || clientes[comunicacion.cliente_id] || 'Cliente desconocido'}</span>
                                                 <span className="interaction-desc" title={comunicacion.descripcion}>
                                                     {comunicacion.descripcion}
                                                 </span>
@@ -335,7 +314,7 @@ const Comunicaciones = () => {
                                                 {tiposInteraccion[comunicacion.tipo_interaccion]?.texto || comunicacion.tipo_interaccion}
                                             </span>
                                         </td>
-                                        <td>{usuarios[comunicacion.usuario_id] || 'Usuario desconocido'}</td>
+                                        <td>{comunicacion.usuario_nombre || usuarios[comunicacion.usuario_id] || 'Usuario desconocido'}</td>
                                         <td>
                                             <div className="interaction-datetime">
                                                 {formatearFechaHora(comunicacion.fecha_hora)}

@@ -1,50 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../Layout';
 
 const Clientes = () => {
-    // Datos de ejemplo
-    const [clientes, setClientes] = useState([
-        {
-            cliente_id: 1,
-            nombre: "María",
-            apellido: "González",
-            email: "maria.gonzalez@email.com",
-            telefono: "+1 234 567 8901",
-            direccion: "Av. Principal 123, Buenos Aires, Argentina",
-            fecha_nacimiento: "1985-06-15",
-            documento_identidad: "DNI 35.678.901",
-            nacionalidad: "argentina",
-            fecha_registro: "2023-01-15",
-            activo: true
-        },
-        {
-            cliente_id: 2,
-            nombre: "Carlos",
-            apellido: "Rodríguez",
-            email: "carlos.rodriguez@email.com",
-            telefono: "+1 345 678 9012",
-            direccion: "Calle Central 456, Madrid, España",
-            fecha_nacimiento: "1990-03-22",
-            documento_identidad: "Pasaporte ES123456",
-            nacionalidad: "españa",
-            fecha_registro: "2023-02-20",
-            activo: true
-        },
-        {
-            cliente_id: 3,
-            nombre: "Ana",
-            apellido: "Martínez",
-            email: "ana.martinez@email.com",
-            telefono: "+1 456 789 0123",
-            direccion: "Rua das Flores 789, São Paulo, Brasil",
-            fecha_nacimiento: "1988-11-08",
-            documento_identidad: "CPF 123.456.789-00",
-            nacionalidad: "brasil",
-            fecha_registro: "2023-03-10",
-            activo: false
-        }
-    ]);
+    const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) || 'http://localhost:5000';
+    const [clientes, setClientes] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     // Estados del formulario
     const [formData, setFormData] = useState({
@@ -70,42 +32,55 @@ const Clientes = () => {
         });
     };
 
+    useEffect(() => { cargarClientes(); }, []);
+
+    async function cargarClientes() {
+        setLoading(true);
+        setError('');
+        try {
+            const res = await fetch(`${API_BASE}/api/clientes`);
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Error al cargar clientes');
+            setClientes(json.data || []);
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    }
+
     // Manejar envío del formulario
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        const nuevoCliente = {
-            ...formData,
-            fecha_registro: new Date().toISOString().split('T')[0],
+        const payload = {
+            nombre: formData.nombre,
+            apellido: formData.apellido,
+            email: formData.email,
+            telefono: formData.telefono,
+            direccion: formData.direccion,
+            fecha_nacimiento: formData.fecha_nacimiento,
+            documento_identidad: formData.documento_identidad,
+            nacionalidad: formData.nacionalidad,
             activo: formData.activo === 'true'
         };
-
-        if (editandoId) {
-            // Actualizar cliente existente
-            setClientes(clientes.map(cliente => 
-                cliente.cliente_id === editandoId 
-                    ? { ...nuevoCliente, cliente_id: editandoId, fecha_registro: cliente.fecha_registro } 
-                    : cliente
-            ));
-            setEditandoId(null);
-        } else {
-            // Agregar nuevo cliente
-            const nuevoId = clientes.length > 0 ? Math.max(...clientes.map(c => c.cliente_id)) + 1 : 1;
-            setClientes([...clientes, { ...nuevoCliente, cliente_id: nuevoId }]);
-        }
-
-        // Limpiar formulario
-        setFormData({
-            nombre: '',
-            apellido: '',
-            email: '',
-            telefono: '',
-            direccion: '',
-            fecha_nacimiento: '',
-            documento_identidad: '',
-            nacionalidad: '',
-            activo: 'true'
-        });
+        try {
+            setError('');
+            if (editandoId) {
+                const res = await fetch(`${API_BASE}/api/clientes/${editandoId}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al actualizar cliente');
+                setEditandoId(null);
+            } else {
+                const res = await fetch(`${API_BASE}/api/clientes`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear cliente');
+            }
+            await cargarClientes();
+            setFormData({
+                nombre: '', apellido: '', email: '', telefono: '', direccion: '', fecha_nacimiento: '', documento_identidad: '', nacionalidad: '', activo: 'true'
+            });
+        } catch (e) { setError(e.message); }
     };
 
     // Editar cliente
@@ -128,10 +103,15 @@ const Clientes = () => {
     };
 
     // Eliminar cliente
-    const eliminarCliente = (id) => {
-        if (window.confirm('¿Está seguro de que desea eliminar este cliente?')) {
-            setClientes(clientes.filter(c => c.cliente_id !== id));
-        }
+    const eliminarCliente = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar este cliente?')) return;
+        try {
+            setError('');
+            const res = await fetch(`${API_BASE}/api/clientes/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar cliente');
+            await cargarClientes();
+        } catch (e) { setError(e.message); }
     };
 
     // Cancelar edición
@@ -179,6 +159,8 @@ const Clientes = () => {
                     <i className="fas fa-user-friends"></i>
                     Gestión de Clientes
                 </h1>
+                {error && (<div className="alert error">{error}</div>)}
+                {loading && (<div className="loading">Cargando...</div>)}
 
                 {/* Formulario de Clientes */}
                 <div className="form-container">

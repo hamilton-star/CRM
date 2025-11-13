@@ -28,39 +28,12 @@ const traducirTipo = (tipo) => {
   return tipos[tipo] || tipo;
 };
 
+const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) || 'http://localhost:5000';
+
 const Proveedores = () => {
-  const [proveedores, setProveedores] = useState([
-    {
-      proveedor_id: 1,
-      nombre_proveedor: "Hotel Paradise Resort",
-      tipo: "hotel",
-      contacto_nombre: "María González",
-      email: "reservas@paradiseresort.com",
-      telefono: "+1 800 123 4567",
-      direccion: "Av. Principal 123, Cancún, México",
-      activo: true
-    },
-    {
-      proveedor_id: 2,
-      nombre_proveedor: "SkyWings Airlines",
-      tipo: "aerolinea",
-      contacto_nombre: "Carlos Rodríguez",
-      email: "grupos@skywings.com",
-      telefono: "+1 800 987 6543",
-      direccion: "Aeropuerto Internacional, Terminal 2",
-      activo: true
-    },
-    {
-      proveedor_id: 3,
-      nombre_proveedor: "Adventure Tours",
-      tipo: "actividad",
-      contacto_nombre: "Ana Martínez",
-      email: "info@adventuretours.com",
-      telefono: "+1 555 123 7890",
-      direccion: "Calle Aventura 456, Lima, Perú",
-      activo: false
-    }
-  ]);
+  const [proveedores, setProveedores] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [form, setForm] = useState({
     nombre_proveedor: '',
@@ -80,24 +53,58 @@ const Proveedores = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const proveedorData = {
-      ...form,
-      activo: form.activo === 'true',
-      proveedor_id: editandoId || (proveedores.length > 0 ? Math.max(...proveedores.map(p => p.proveedor_id)) + 1 : 1)
-    };
+  useEffect(() => {
+    cargarProveedores();
+  }, []);
 
-    if (editandoId) {
-      setProveedores(proveedores.map(p => 
-        p.proveedor_id === editandoId ? { ...p, ...proveedorData } : p
-      ));
-    } else {
-      setProveedores([...proveedores, proveedorData]);
+  async function cargarProveedores() {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/proveedores`);
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Error al cargar proveedores');
+      setProveedores(json.data || []);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    resetForm();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    const payload = {
+      nombre_proveedor: form.nombre_proveedor,
+      tipo: form.tipo,
+      contacto_nombre: form.contacto_nombre,
+      email: form.email,
+      telefono: form.telefono,
+      direccion: form.direccion,
+      activo: form.activo === 'true',
+    };
+    try {
+      if (editandoId) {
+        const res = await fetch(`${API_BASE}/api/proveedores/${editandoId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Error al actualizar proveedor');
+      } else {
+        const res = await fetch(`${API_BASE}/api/proveedores`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear proveedor');
+      }
+      await cargarProveedores();
+      resetForm();
+    } catch (e) { setError(e.message); }
   };
 
   const handleEdit = (id) => {
@@ -116,10 +123,15 @@ const Proveedores = () => {
     }
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este proveedor?')) {
-      setProveedores(proveedores.filter(p => p.proveedor_id !== id));
-    }
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Está seguro de que desea eliminar este proveedor?')) return;
+    try {
+      setError('');
+      const res = await fetch(`${API_BASE}/api/proveedores/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar proveedor');
+      await cargarProveedores();
+    } catch (e) { setError(e.message); }
   };
 
   const resetForm = () => {
@@ -162,6 +174,8 @@ const Proveedores = () => {
           <i className="fas fa-handshake"></i>
           Gestión de Proveedores
         </h1>
+        {error && (<div className="alert error">{error}</div>)}
+        {loading && (<div className="loading">Cargando...</div>)}
 
         {/* Formulario de Proveedores */}
         <div className="form-container">

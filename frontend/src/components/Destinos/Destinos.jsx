@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../Layout';
 
 const categorias = [
@@ -11,38 +11,7 @@ const categorias = [
   { value: 'gastronomico', label: 'Gastronómico' },
 ];
 
-const ejemploDestinos = [
-  {
-    id: 1,
-    destino: 'París, Francia',
-    nombre_destino: 'Torre Eiffel',
-    pais: 'Francia',
-    ciudad: 'París',
-    descripcion: 'Uno de los monumentos más famosos del mundo, ubicado en el corazón de París.',
-    categoria: 'cultural',
-    activo: true,
-  },
-  {
-    id: 2,
-    destino: 'Machu Picchu, Perú',
-    nombre_destino: 'Ciudadela Inca',
-    pais: 'Perú',
-    ciudad: 'Cuzco',
-    descripcion: 'Antigua ciudadela inca ubicada en las alturas de los Andes peruanos.',
-    categoria: 'aventura',
-    activo: true,
-  },
-  {
-    id: 3,
-    destino: 'Cancún, México',
-    nombre_destino: 'Playas de Cancún',
-    pais: 'México',
-    ciudad: 'Cancún',
-    descripcion: 'Famoso destino de playa con aguas turquesas y arena blanca.',
-    categoria: 'playa',
-    activo: false,
-  },
-];
+const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE) || 'http://localhost:5000';
 
 function traducirCategoria(categoria) {
   const map = {
@@ -57,31 +26,83 @@ function traducirCategoria(categoria) {
 }
 
 export default function Destinos() {
-  const [destinos, setDestinos] = useState(ejemploDestinos);
+  const [destinos, setDestinos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     destino: '', nombre_destino: '', pais: '', ciudad: '', descripcion: '', categoria: '', activo: 'true',
   });
   const [editandoId, setEditandoId] = useState(null);
+
+  useEffect(() => {
+    cargarDestinos();
+  }, []);
+
+  async function cargarDestinos() {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/destinos`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Error al cargar destinos');
+      const mapped = (json.data || []).map(d => ({
+        id: d.destino_id,
+        nombre_destino: d.nombre_destino,
+        pais: d.pais,
+        ciudad: d.ciudad,
+        descripcion: d.descripcion,
+        categoria: d.categoria,
+        activo: d.activo,
+        destino: `${d.ciudad ? d.ciudad + ', ' : ''}${d.pais || ''}`.trim(),
+      }));
+      setDestinos(mapped);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function handleChange(e) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const destinoData = {
-      ...form,
+    const payload = {
+      nombre_destino: form.nombre_destino,
+      pais: form.pais,
+      ciudad: form.ciudad,
+      descripcion: form.descripcion,
+      categoria: form.categoria,
       activo: form.activo === 'true',
     };
-    if (editandoId) {
-      setDestinos(ds => ds.map(d => d.id === editandoId ? { ...d, ...destinoData } : d));
-      setEditandoId(null);
-    } else {
-      const id = destinos.length > 0 ? Math.max(...destinos.map(d => d.id)) + 1 : 1;
-      setDestinos(ds => [...ds, { ...destinoData, id }]);
+    try {
+      setError('');
+      if (editandoId) {
+        const res = await fetch(`${API_BASE}/api/destinos/${editandoId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Error al actualizar destino');
+        setEditandoId(null);
+      } else {
+        const res = await fetch(`${API_BASE}/api/destinos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear destino');
+      }
+      await cargarDestinos();
+      setForm({ destino: '', nombre_destino: '', pais: '', ciudad: '', descripcion: '', categoria: '', activo: 'true' });
+    } catch (e) {
+      setError(e.message);
     }
-    setForm({ destino: '', nombre_destino: '', pais: '', ciudad: '', descripcion: '', categoria: '', activo: 'true' });
   }
 
   function handleEdit(id) {
@@ -100,9 +121,16 @@ export default function Destinos() {
     }
   }
 
-  function handleDelete(id) {
-    if (window.confirm('¿Está seguro de que desea eliminar este destino?')) {
-      setDestinos(ds => ds.filter(d => d.id !== id));
+  async function handleDelete(id) {
+    if (!window.confirm('¿Está seguro de que desea eliminar este destino?')) return;
+    try {
+      setError('');
+      const res = await fetch(`${API_BASE}/api/destinos/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar destino');
+      await cargarDestinos();
+    } catch (e) {
+      setError(e.message);
     }
   }
 
@@ -138,6 +166,8 @@ export default function Destinos() {
           <i className="fas fa-map-marked-alt"></i>
           Gestión de Destinos
         </h1>
+        {error && (<div className="alert error">{error}</div>)}
+        {loading && (<div className="loading">Cargando...</div>)}
         <div className="form-container">
           <h2 className="form-title">
             <i className={`fas ${editandoId ? 'fa-edit' : 'fa-plus-circle'}`}></i>
