@@ -7,15 +7,8 @@ const Comunicaciones = () => {
     const [comunicaciones, setComunicaciones] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    // Mapeo de datos
-    const clientes = {
-        1: "María González",
-        2: "Carlos Rodríguez", 
-        3: "Ana Martínez",
-        4: "Juan Pérez",
-        5: "Laura Sánchez"
-    };
+    const [usuarioActual, setUsuarioActual] = useState(null);
+    const [clientesList, setClientesList] = useState([]);
 
     const usuarios = {
         1: "Roberto Jiménez",
@@ -40,12 +33,25 @@ const Comunicaciones = () => {
     const [editandoId, setEditandoId] = useState(null);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    // Cargar comunicaciones y setear fecha por defecto
+    // Cargar datos iniciales (comunicaciones y clientes), setear fecha por defecto, y usuario actual desde localStorage
     useEffect(() => {
         const ahora = new Date();
         ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
-        setFormData(prev => ({ ...prev, fecha_hora: ahora.toISOString().slice(0, 16) }));
-        cargarComunicaciones();
+
+        // Obtener usuario actual del localStorage
+        try {
+            const raw = localStorage.getItem('usuario');
+            if (raw) {
+                const u = JSON.parse(raw);
+                setUsuarioActual(u);
+                setFormData(prev => ({ ...prev, usuario_id: u.usuario_id ? String(u.usuario_id) : '', fecha_hora: ahora.toISOString().slice(0, 16) }));
+            } else {
+                setFormData(prev => ({ ...prev, fecha_hora: ahora.toISOString().slice(0, 16) }));
+            }
+        } catch (e) {
+            setFormData(prev => ({ ...prev, fecha_hora: ahora.toISOString().slice(0, 16) }));
+        }
+        cargarDatos();
     }, []);
 
     async function cargarComunicaciones() {
@@ -56,6 +62,23 @@ const Comunicaciones = () => {
             const json = await res.json();
             if (!res.ok || !json.success) throw new Error(json.message || 'Error al cargar comunicaciones');
             setComunicaciones(json.data || []);
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    }
+
+    async function cargarDatos() {
+        setLoading(true);
+        setError('');
+        try {
+            const [resCom, resCli] = await Promise.all([
+                fetch(`${API_BASE}/api/comunicaciones`),
+                fetch(`${API_BASE}/api/clientes`)
+            ]);
+            const [jsonCom, jsonCli] = await Promise.all([resCom.json(), resCli.json()]);
+            if (!resCom.ok || !jsonCom.success) throw new Error(jsonCom.message || 'Error al cargar comunicaciones');
+            if (!resCli.ok || !jsonCli.success) throw new Error(jsonCli.message || 'Error al cargar clientes');
+            setComunicaciones(jsonCom.data || []);
+            setClientesList(jsonCli.data || []);
         } catch (e) { setError(e.message); }
         finally { setLoading(false); }
     }
@@ -72,9 +95,13 @@ const Comunicaciones = () => {
     // Función para manejar el envío del formulario
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!usuarioActual || !usuarioActual.usuario_id) {
+            setError('Debe iniciar sesión para registrar comunicaciones.');
+            return;
+        }
         const payload = {
             cliente_id: parseInt(formData.cliente_id),
-            usuario_id: parseInt(formData.usuario_id),
+            usuario_id: parseInt(usuarioActual.usuario_id),
             tipo_interaccion: formData.tipo_interaccion,
             fecha_hora: formData.fecha_hora,
             descripcion: formData.descripcion
@@ -95,7 +122,7 @@ const Comunicaciones = () => {
                 const json = await res.json();
                 if (!res.ok || !json.success) throw new Error(json.message || 'Error al crear interacción');
             }
-            await cargarComunicaciones();
+            await cargarDatos();
             resetForm();
         } catch (e) { setError(e.message); }
     };
@@ -107,7 +134,7 @@ const Comunicaciones = () => {
         
         setFormData({
             cliente_id: '',
-            usuario_id: '',
+            usuario_id: usuarioActual && usuarioActual.usuario_id ? String(usuarioActual.usuario_id) : '',
             tipo_interaccion: '',
             fecha_hora: ahora.toISOString().slice(0, 16),
             descripcion: ''
@@ -135,7 +162,7 @@ const Comunicaciones = () => {
         if (comunicacion) {
             setFormData({
                 cliente_id: comunicacion.cliente_id.toString(),
-                usuario_id: comunicacion.usuario_id.toString(),
+                usuario_id: (usuarioActual && usuarioActual.usuario_id ? String(usuarioActual.usuario_id) : ''),
                 tipo_interaccion: comunicacion.tipo_interaccion,
                 fecha_hora: comunicacion.fecha_hora.slice(0, 16), // Asegurar formato correcto
                 descripcion: comunicacion.descripcion
@@ -155,7 +182,7 @@ const Comunicaciones = () => {
             const res = await fetch(`${API_BASE}/api/comunicaciones/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok || !json.success) throw new Error(json.message || 'Error al eliminar interacción');
-            await cargarComunicaciones();
+            await cargarDatos();
         } catch (e) { setError(e.message); }
     };
 
@@ -193,25 +220,16 @@ const Comunicaciones = () => {
                                     required
                                 >
                                     <option value="">Seleccione un cliente</option>
-                                    {Object.entries(clientes).map(([id, nombre]) => (
-                                        <option key={`cliente-${id}`} value={id}>{nombre}</option>
+                                    {clientesList.map(c => (
+                                        <option key={`cliente-${c.cliente_id}`} value={c.cliente_id}>
+                                            {`${c.nombre} ${c.apellido || ''}`.trim()}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label htmlFor="usuario_id">Agente *</label>
-                                <select 
-                                    id="usuario_id" 
-                                    name="usuario_id" 
-                                    value={formData.usuario_id}
-                                    onChange={handleInputChange}
-                                    required
-                                >
-                                    <option value="">Seleccione un agente</option>
-                                    {Object.entries(usuarios).map(([id, nombre]) => (
-                                        <option key={`usuario-${id}`} value={id}>{nombre}</option>
-                                    ))}
-                                </select>
+                                <label>Agente</label>
+                                <input type="text" readOnly value={usuarioActual?.nombre || 'No autenticado'} />
                             </div>
                             <div className="form-group">
                                 <label htmlFor="tipo_interaccion">Tipo de Interacción *</label>
@@ -302,7 +320,7 @@ const Comunicaciones = () => {
                                         <td>#{comunicacion.interaccion_id.toString().padStart(3, '0')}</td>
                                         <td>
                                             <div className="interaction-info">
-                                                <span className="interaction-client">{comunicacion.cliente_nombre || clientes[comunicacion.cliente_id] || 'Cliente desconocido'}</span>
+                                                <span className="interaction-client">{comunicacion.cliente_nombre || (clientesList.find(c => c.cliente_id === comunicacion.cliente_id) ? `${clientesList.find(c => c.cliente_id === comunicacion.cliente_id).nombre} ${clientesList.find(c => c.cliente_id === comunicacion.cliente_id).apellido || ''}`.trim() : 'Cliente desconocido')}</span>
                                                 <span className="interaction-desc" title={comunicacion.descripcion}>
                                                     {comunicacion.descripcion}
                                                 </span>

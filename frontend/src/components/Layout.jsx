@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import '../styles.css';
 
 const menuItems = [
@@ -14,6 +15,19 @@ const menuItems = [
   { icon: 'fas fa-cog', label: 'Configuración' },
 ];
 
+const pathByLabel = {
+  'Dashboard': '/',
+  'Destinos': '/destinos',
+  'Proveedores': '/proveedores',
+  'Usuarios': '/login',
+  'Paquetes Turísticos': '/PaquetesTuristicos',
+  'Clientes': '/clientes',
+  'Reservas': '/reservas',
+  'Pagos': '/pagos',
+  'Comunicación': '/comunicacion',
+  'Configuración': '/configuracion',
+};
+
 export default function Layout({ children, activeMenu = 'Destinos' }) {
   return (
     <div className="app-container">
@@ -26,13 +40,15 @@ export default function Layout({ children, activeMenu = 'Destinos' }) {
         </div>
         <div className="sidebar-menu">
           {menuItems.map(item => (
-            <div
+            <Link
               key={item.label}
+              to={pathByLabel[item.label] || '/'}
               className={`menu-item${item.label === activeMenu ? ' active' : ''}`}
+              style={{ textDecoration: 'none', color: 'inherit' }}
             >
               <i className={item.icon}></i>
               <span className="menu-text">{item.label}</span>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

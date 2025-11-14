@@ -334,7 +334,7 @@ const Clientes = () => {
                                     <td>
                                         <div className="client-info">
                                             <span className="client-name">{cliente.nombre} {cliente.apellido}</span>
-                                            <span className="client-details">{calcularEdad(cliente.fecha_nacimiento)}</span>
+                                            {/* <span className="client-details">{calcularEdad(cliente.fecha_nacimiento)}</span> */}
                                         </div>
                                     </td>
                                     <td>

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import './styles.css';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import Destinos from './components/Destinos/Destinos';
 import Proveedores from './components/Proveedores/Proveedores';
 import PaquetesTuristicos from './components/PaquetesTuristicos/PaquetesTuristicos';
 import Clientes from './components/Clientes/clientes';
 import Reservas from './components/reservas/Reservas';
 import Comunicaciones from './components/Comunicaciones/Comunicaciones';
+import Login from './components/usuarios/Login';
 
 const App = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -81,19 +82,33 @@ const App = () => {
     return (
         <Router>
             <Routes>
-                <Route path="/" element={<Dashboard menuItems={menuItems} sidebarCollapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} activeMenuItem={activeMenuItem} handleMenuItemClick={handleMenuItemClick} searchValue={searchValue} setSearchValue={setSearchValue} reservations={reservations} />} />
-                <Route path="/destinos" element={<Destinos />} />
-                <Route path="/proveedores" element={<Proveedores />} />
-                <Route path="/PaquetesTuristicos" element={<PaquetesTuristicos />} />
-                <Route path="/clientes" element={<Clientes />} />
-                <Route path="/reservas" element={<Reservas />} />
-                <Route path="/comunicacion" element={<Comunicaciones />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<ProtectedRoute><Dashboard menuItems={menuItems} sidebarCollapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} activeMenuItem={activeMenuItem} handleMenuItemClick={handleMenuItemClick} searchValue={searchValue} setSearchValue={setSearchValue} reservations={reservations} /></ProtectedRoute>} />
+                <Route path="/destinos" element={<ProtectedRoute><Destinos /></ProtectedRoute>} />
+                <Route path="/proveedores" element={<ProtectedRoute><Proveedores /></ProtectedRoute>} />
+                <Route path="/PaquetesTuristicos" element={<ProtectedRoute><PaquetesTuristicos /></ProtectedRoute>} />
+                <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+                <Route path="/reservas" element={<ProtectedRoute><Reservas /></ProtectedRoute>} />
+                <Route path="/comunicacion" element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
     );
 };
 
 function Dashboard({ menuItems, sidebarCollapsed, toggleSidebar, activeMenuItem, handleMenuItemClick, searchValue, setSearchValue, reservations }) {
+    const location = useLocation();
+    const pathToId = {
+        '/': 'dashboard',
+        '/destinos': 'destinations',
+        '/proveedores': 'providers',
+        '/PaquetesTuristicos': 'packages',
+        '/clientes': 'clients',
+        '/reservas': 'reservations',
+        '/comunicacion': 'communication',
+        '/configuracion': 'settings'
+    };
+    const activeFromPath = pathToId[location.pathname] || 'dashboard';
     return (
         <div className="app-container">
             {/* Sidebar */}
@@ -109,7 +124,7 @@ function Dashboard({ menuItems, sidebarCollapsed, toggleSidebar, activeMenuItem,
                         <Link 
                             key={item.id}
                             to={item.path}
-                            className={`menu-item ${activeMenuItem === item.id ? 'active' : ''}`}
+                            className={`menu-item ${(activeMenuItem === item.id || activeFromPath === item.id) ? 'active' : ''}`}
                             onClick={() => handleMenuItemClick(item.id)}
                             style={{ textDecoration: 'none', color: 'inherit' }}
                         >
@@ -301,3 +316,16 @@ function Dashboard({ menuItems, sidebarCollapsed, toggleSidebar, activeMenuItem,
 };
 
 export default App;
+
+function ProtectedRoute({ children }) {
+    const isAuthenticated = (() => {
+        try {
+            const u = localStorage.getItem('usuario');
+            return !!u;
+        } catch {
+            return false;
+        }
+    })();
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    return children;
+}

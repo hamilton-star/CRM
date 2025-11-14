@@ -18,6 +18,7 @@ app.use('/api/clientes', require('./routes/clientes'));
 app.use('/api/reservas', require('./routes/reservas'));
 app.use('/api/comunicaciones', require('./routes/comunicaciones'));
 app.use('/api/usuarios', require('./routes/usuarios'));
+app.use('/api/auth', require('./routes/auth'));
 
 // Error handling middleware
 app.use(require('./middleware/errorHandler'));
