@@ -13,8 +13,10 @@ const Login = () => {
   useEffect(() => {
     // si ya está autenticado, redirigir al dashboard
     try {
-      const u = localStorage.getItem('usuario');
-      if (u) navigate('/', { replace: true });
+      if (typeof window !== 'undefined') {
+        const u = localStorage.getItem('usuario');
+        if (u) navigate('/', { replace: true });
+      }
     } catch {}
   }, [navigate]);
 
@@ -33,7 +35,9 @@ const Login = () => {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || 'Error de autenticación');
       // Guardar usuario básico para uso posterior (ej. mostrar nombre en UI)
-      localStorage.setItem('usuario', JSON.stringify(json.data));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('usuario', JSON.stringify(json.data));
+      }
       // eslint-disable-next-line no-alert
       alert(`¡Inicio de sesión exitoso!\nUsuario: ${json.data.nombre}`);
       navigate('/', { replace: true });

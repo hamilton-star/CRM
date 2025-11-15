@@ -318,14 +318,21 @@ function Dashboard({ menuItems, sidebarCollapsed, toggleSidebar, activeMenuItem,
 export default App;
 
 function ProtectedRoute({ children }) {
-    const isAuthenticated = (() => {
+    const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
         try {
-            const u = localStorage.getItem('usuario');
-            return !!u;
+            const u = typeof window !== 'undefined' ? localStorage.getItem('usuario') : null;
+            setIsAuthenticated(!!u);
         } catch {
-            return false;
+            setIsAuthenticated(false);
+        } finally {
+            setIsLoading(false);
         }
-    })();
+    }, []);
+
+    if (isLoading) return <div>Cargando...</div>;
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     return children;
 }

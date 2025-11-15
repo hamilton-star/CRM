@@ -40,11 +40,15 @@ const Comunicaciones = () => {
 
         // Obtener usuario actual del localStorage
         try {
-            const raw = localStorage.getItem('usuario');
-            if (raw) {
-                const u = JSON.parse(raw);
-                setUsuarioActual(u);
-                setFormData(prev => ({ ...prev, usuario_id: u.usuario_id ? String(u.usuario_id) : '', fecha_hora: ahora.toISOString().slice(0, 16) }));
+            if (typeof window !== 'undefined') {
+                const raw = localStorage.getItem('usuario');
+                if (raw) {
+                    const u = JSON.parse(raw);
+                    setUsuarioActual(u);
+                    setFormData(prev => ({ ...prev, usuario_id: u.usuario_id ? String(u.usuario_id) : '', fecha_hora: ahora.toISOString().slice(0, 16) }));
+                } else {
+                    setFormData(prev => ({ ...prev, fecha_hora: ahora.toISOString().slice(0, 16) }));
+                }
             } else {
                 setFormData(prev => ({ ...prev, fecha_hora: ahora.toISOString().slice(0, 16) }));
             }

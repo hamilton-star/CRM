@@ -1,0 +1,25 @@
+module.exports = function override(config, env) {
+  // Configurar webpack para evitar el error de localStorage
+  config.plugins = config.plugins.map(plugin => {
+    if (plugin.constructor.name === 'HtmlWebpackPlugin') {
+      plugin.options = plugin.options || {};
+      plugin.options.templateContent = () => `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>TurismoCRM - Gestión Integral de Turismo</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body>
+            <div id="root"></div>
+        </body>
+        </html>
+      `;
+    }
+    return plugin;
+  });
+  return config;
+};
