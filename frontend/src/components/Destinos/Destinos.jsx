@@ -141,26 +141,6 @@ export default function Destinos() {
 
   return (
     <Layout activeMenu="Destinos">
-      <div className="header">
-        <div className="header-left">
-          <div className="toggle-sidebar">
-            <i className="fas fa-bars"></i>
-          </div>
-          <div className="search-box">
-            <i className="fas fa-search"></i>
-            <input type="text" placeholder="Buscar destinos..." />
-          </div>
-        </div>
-        <div className="header-right">
-          <div className="notification">
-            <i className="fas fa-bell"></i>
-            <div className="notification-badge">3</div>
-          </div>
-          <div className="user-profile">
-            <img src="https://randomuser.me/api/portraits/men/41.jpg" alt="Usuario" />
-          </div>
-        </div>
-      </div>
       <div className="content">
         <h1 className="page-title">
           <i className="fas fa-map-marked-alt"></i>
